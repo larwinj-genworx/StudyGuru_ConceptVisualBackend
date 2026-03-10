@@ -1,0 +1,1 @@
+"""Concept visual microservice package."""
