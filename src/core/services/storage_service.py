@@ -8,10 +8,13 @@ from PIL import Image
 
 from src.config.settings import Settings
 
+_STORAGE_SCOPES = ("https://www.googleapis.com/auth/devstorage.read_write",)
+
 
 class ConceptVisualStorageService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        self._bucket = None
 
     def save_visual(
         self,
@@ -43,6 +46,10 @@ class ConceptVisualStorageService:
         thumb_canvas.paste(thumbnail, (offset_x, offset_y))
         thumb_canvas.save(thumb_path, format="PNG", optimize=True)
 
+        if self.settings.gcs_enabled:
+            self._upload_file(full_path)
+            self._upload_file(thumb_path)
+
         buffer = BytesIO()
         image.save(buffer, format="PNG", optimize=True)
         digest = hashlib.sha1(buffer.getvalue()).hexdigest()
@@ -58,3 +65,48 @@ class ConceptVisualStorageService:
 
     def _relative(self, path: Path) -> str:
         return str(path.relative_to(self.settings.output_dir)).replace("\\", "/")
+
+    def _upload_file(self, path: Path) -> None:
+        blob = self._bucket_client().blob(self._object_name(self._relative(path)))
+        blob.cache_control = "private, max-age=3600"
+        blob.upload_from_filename(
+            filename=str(path),
+            content_type="image/png",
+            timeout=self.settings.gcs_request_timeout_seconds,
+        )
+
+    def _bucket_client(self):
+        if self._bucket is not None:
+            return self._bucket
+        try:
+            import google.auth
+            from google.auth import impersonated_credentials
+            from google.cloud import storage
+        except ImportError as exc:  # pragma: no cover - dependency is runtime configured
+            raise RuntimeError(
+                "Missing dependency 'google-cloud-storage'. Install ConceptVisualBackend dependencies."
+            ) from exc
+
+        source_credentials, detected_project = google.auth.default(scopes=_STORAGE_SCOPES)
+        active_project = self.settings.gcs_project_id or detected_project
+        if not active_project:
+            raise RuntimeError("Unable to determine the Google Cloud project for concept visuals.")
+
+        credentials = source_credentials
+        if (self.settings.gcs_target_service_account or "").strip():
+            credentials = impersonated_credentials.Credentials(
+                source_credentials=source_credentials,
+                target_principal=self.settings.gcs_target_service_account.strip(),
+                target_scopes=list(_STORAGE_SCOPES),
+                lifetime=3600,
+            )
+
+        client = storage.Client(project=active_project, credentials=credentials)
+        self._bucket = client.bucket(self.settings.gcs_bucket_name)
+        return self._bucket
+
+    def _object_name(self, relative_path: str) -> str:
+        prefix = self.settings.gcs_bucket_prefix.strip("/")
+        if prefix:
+            return f"{prefix}/concept_visuals/{relative_path}"
+        return f"concept_visuals/{relative_path}"

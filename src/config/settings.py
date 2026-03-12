@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,6 +23,18 @@ class Settings(BaseSettings):
         default=Path("output/concept_visuals"),
         validation_alias=AliasChoices("CONCEPT_VISUAL_OUTPUT_DIR", "CONCEPT_IMAGE_OUTPUT_DIR"),
     )
+    artifact_storage_backend: Literal["local", "gcs"] = Field(
+        default="gcs",
+        alias="ARTIFACT_STORAGE_BACKEND",
+    )
+    gcs_project_id: str = Field(default="gwx-internship-01", alias="GCS_PROJECT_ID")
+    gcs_bucket_name: str = Field(default="gwx-stg-intern-01", alias="GCS_BUCKET_NAME")
+    gcs_bucket_prefix: str = Field(default="studyguru", alias="GCS_BUCKET_PREFIX")
+    gcs_target_service_account: str = Field(
+        default="gwx-cloudrun-sa-01@gwx-internship-01.iam.gserviceaccount.com",
+        alias="GCS_TARGET_SERVICE_ACCOUNT",
+    )
+    gcs_request_timeout_seconds: int = Field(default=300, alias="GCS_REQUEST_TIMEOUT_SECONDS")
     hf_api_token: SecretStr | None = Field(
         default=None,
         validation_alias=AliasChoices("HF_TOKEN", "HUGGINGFACEHUB_API_TOKEN", "HUGGING_FACE_HUB_TOKEN"),
@@ -54,6 +67,10 @@ class Settings(BaseSettings):
 
     def ensure_output_dir(self) -> None:
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def gcs_enabled(self) -> bool:
+        return self.artifact_storage_backend == "gcs"
 
     @property
     def hf_token(self) -> str:
