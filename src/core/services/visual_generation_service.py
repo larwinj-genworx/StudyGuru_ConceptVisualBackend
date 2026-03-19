@@ -87,11 +87,12 @@ class ConceptVisualGenerationService:
                     file_stem=file_stem,
                 )
             except ProviderExecutionError as exc:
-                logger.warning(
+                logger.error(
                     "Concept visual generation failed for %s (%s): %s",
                     payload.concept_name,
                     variant.visual_style,
                     exc,
+                    exc_info=True,
                 )
                 if not assets:
                     raise

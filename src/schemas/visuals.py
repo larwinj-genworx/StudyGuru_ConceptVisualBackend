@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LearningSection(BaseModel):
@@ -18,6 +18,8 @@ class LearningContent(BaseModel):
 
 
 class ConceptVisualRenderRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     subject_id: str
     subject_name: str
     grade_level: str
