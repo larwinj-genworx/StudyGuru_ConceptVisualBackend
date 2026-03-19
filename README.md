@@ -55,9 +55,20 @@ docker compose up --build concept-visual-service
 
 ```bash
 cd StudyGuru_ConceptVisualBackend
-python3 -m venv .venv
+
+# Install uv (if not already installed)
+pip install uv
+
+# Create virtual environment
+uv venv
+
+# Activate virtual environment
 source .venv/bin/activate
-pip install -r requirements.txt
+
+# Install dependencies
+uv pip install -r requirements.txt
+
+# Run the FastAPI server
 uvicorn src.main:app --host 0.0.0.0 --port 8002 --reload
 ```
 
