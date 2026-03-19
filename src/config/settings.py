@@ -8,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application configuration loaded from environment variables."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -15,7 +17,7 @@ class Settings(BaseSettings):
     )
 
     service_token: str = Field(
-        default="studyguru-concept-visual-service",
+        default="",
         alias="CONCEPT_VISUAL_SERVICE_TOKEN",
     )
     output_dir: Path = Field(
@@ -43,6 +45,8 @@ class Settings(BaseSettings):
     num_inference_steps: int = Field(default=4, alias="CONCEPT_VISUAL_INFERENCE_STEPS")
     guidance_scale: float = Field(default=0.0, alias="CONCEPT_VISUAL_GUIDANCE_SCALE")
     output_quality: int = Field(default=100, alias="CONCEPT_VISUAL_OUTPUT_QUALITY")
+    cors_allow_origins_raw: str = Field(default="", alias="CORS_ALLOW_ORIGINS")
+    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     negative_prompt: str = Field(
         default=(
             "blurry, low resolution, low detail, distorted anatomy, bad proportions, duplicate objects, "
@@ -64,6 +68,14 @@ class Settings(BaseSettings):
     @property
     def provider_configured(self) -> bool:
         return bool(self.hf_token)
+
+    @property
+    def cors_allow_origins(self) -> list[str]:
+        return [
+            origin.rstrip("/")
+            for origin in (item.strip() for item in self.cors_allow_origins_raw.split(","))
+            if origin
+        ]
 
 
 @lru_cache(maxsize=1)

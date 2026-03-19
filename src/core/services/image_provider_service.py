@@ -23,6 +23,8 @@ class ProviderExecutionError(ConceptVisualProviderError):
 
 
 class HuggingFaceImageProviderService:
+    """Adapter around Hugging Face image generation providers."""
+
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 
@@ -62,7 +64,7 @@ class HuggingFaceImageProviderService:
             ) from exc
         except HfHubHTTPError as exc:
             raise self._translate_http_error(exc) from exc
-        except Exception as exc:  # pragma: no cover - provider/network edge cases
+        except (OSError, RuntimeError, ValueError) as exc:  # pragma: no cover - provider/network edge cases
             raise ProviderExecutionError(
                 "The image provider could not generate the visual at the moment."
             ) from exc
